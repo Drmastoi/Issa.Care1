@@ -1,0 +1,1061 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Dictation Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .floating-app {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0;
+            box-shadow: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            border: none;
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .drag-handle {
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: default; /* Changed from grab to default for app feel */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .app-title {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .control-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .minimize { background: #f1c40f; }
+        .maximize { background: #2ecc71; }
+        .close { background: #e74c3c; }
+
+        .control-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .content {
+            padding: 15px 20px 20px 20px; /* Adjusted padding */
+            height: calc(100% - 40px);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; /* Allow content to scroll if it overflows */
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px; /* Adjusted margin */
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #e74c3c;
+            transition: all 0.3s;
+        }
+
+        .status-indicator.recording {
+            background: #e74c3c;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-indicator.ready {
+            background: #2ecc71;
+        }
+         .status-indicator.error {
+            background: #e74c3c; /* Same as initial for error */
+        }
+
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .patient-management {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .patient-management select {
+            flex-grow: 1;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            font-size: 12px;
+            outline: none;
+        }
+         .patient-management button {
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        .patient-management button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+
+        .template-selector {
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+
+        .template-selector select {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px; /* Adjusted margin */
+            flex-shrink: 0;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-record {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+        }
+
+        .btn-clear {
+            background: linear-gradient(135deg, #fdcb6e, #e17055);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .transcript-area {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 15px;
+            border: none;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+            resize: vertical;
+            width: 100%;
+            font-family: inherit;
+            flex-grow: 1; /* Allow textarea to take remaining space */
+            min-height: 150px; /* Ensure it has a minimum height */
+        }
+
+        .transcript-area:focus {
+            outline: 2px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-shrink: 0;
+        }
+
+        .btn-secondary {
+            flex: 1;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.9);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            display: none;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-app" id="floatingApp">
+        <div class="drag-handle" id="dragHandle">
+            <span class="app-title">🏥 Medical Dictation</span>
+            <div class="window-controls">
+                <div class="control-btn minimize" onclick="minimizeApp()"></div>
+                <div class="control-btn maximize" onclick="toggleMaximize()"></div>
+                <div class="control-btn close" onclick="closeApp()"></div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="error-message" id="errorMessage"></div>
+
+            <div class="status-bar">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Initializing...</span>
+            </div>
+
+            <div class="patient-management">
+                <select id="patientSelector" onchange="switchPatientEvent()"></select>
+                <button onclick="addNewPatient()">+ New Patient</button>
+            </div>
+
+            <div class="template-selector">
+                <select id="templateSelect" onchange="loadTemplate()">
+                    <option value="">Select Note Template</option>
+                    <option value="homevisit">Home Visit</option>
+                    <option value="soap">SOAP Note</option>
+                </select>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-record" id="recordBtn" onclick="toggleRecording()">
+                    🎤 Record
+                </button>
+                <button class="btn btn-clear" onclick="clearTranscript()">
+                    🗑️ Clear
+                </button>
+            </div>
+
+            <textarea
+                class="transcript-area"
+                id="transcriptArea"
+                placeholder="Start recording to transcribe your patient notes, or type directly here...">
+            </textarea>
+
+            <div class="actions">
+                <button class="btn-secondary" onclick="copyToClipboard()">📋 Copy</button>
+                <button class="btn-secondary" onclick="saveNote()">💾 Save (.txt)</button>
+                <button class="btn-secondary" onclick="exportToPDF()">📄 PDF</button>
+                <button class="btn-secondary" onclick="generateReferral()">➡️ Referral</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Variables & localStorage Keys ---
+        let patientNotes = [];
+        let currentPatientId = null;
+        let patientCounter = 1;
+        let recognition;
+        let isRecording = false;
+        let homeVisitMode = false; // Flag for Home Visit smart dictation
+        let currentSection = ''; // For smart dictation to know where to append
+
+        const LOCAL_STORAGE_PATIENTS_KEY = 'medicalDictationApp_patientNotes_v1';
+        const LOCAL_STORAGE_CURRENT_PATIENT_ID_KEY = 'medicalDictationApp_currentPatientId_v1';
+        const LOCAL_STORAGE_PATIENT_COUNTER_KEY = 'medicalDictationApp_patientCounter_v1';
+
+        // --- Note Templates ---
+        const templates = {
+            homevisit: {
+                content: `Home Visit Note\nDate: ${new Date().toLocaleDateString()}\n\nAcute Issues: \n\nAssessment:\n\nObservations and general conditions:\n\nPrevious investigations and consultations noted:\n\nPlan:\n-\n\n- No further concerns by nursing staff. Continue with current care plan and to monitor observations as and when needed basis as planned. To inform surgery if any worsening of symptoms.`,
+                handler: processHomeVisitDictation, // Custom handler for Home Visit
+                sections: {
+                    'acute issues': 'Acute Issues:',
+                    'assessment': 'Assessment:',
+                    'observations': 'Observations and general conditions:',
+                    'previous investigations': 'Previous investigations and consultations noted:',
+                    'plan': 'Plan:',
+                    'no further concerns': 'No further concerns by nursing staff. Continue with current care plan and to monitor observations as and when needed basis as planned. To inform surgery if any worsening of symptoms.'
+                }
+            },
+            soap: {
+                content: `SUBJECTIVE:\nChief Complaint: \nHistory of Present Illness: \nReview of Systems: \n\nOBJECTIVE:\nVital Signs: \nPhysical Examination: \n\nASSESSMENT:\nDiagnosis: \n\nPLAN:\nTreatment: \nFollow-up: `,
+                handler: processGenericStructuredDictation,
+                sections: {
+                    'subjective': 'SUBJECTIVE:',
+                    'chief complaint': 'Chief Complaint:',
+                    'history of present illness': 'History of Present Illness:',
+                    'review of systems': 'Review of Systems:',
+                    'objective': 'OBJECTIVE:',
+                    'vital signs': 'Vital Signs:',
+                    'physical examination': 'Physical Examination:',
+                    'assessment': 'ASSESSMENT:',
+                    'diagnosis': 'Diagnosis:',
+                    'plan': 'PLAN:',
+                    'treatment': 'Treatment:',
+                    'follow-up': 'Follow-up:'
+                }
+            }
+            // Removed 'consultation' template here
+        };
+
+
+        // --- Initialization ---
+        window.onload = function() {
+            loadDataFromLocalStorage();
+            initializeSpeechRecognition();
+            setupAlwaysOnTop();
+            // resizeBrowserWindow(); // Can be disruptive, enable if preferred
+
+            if (patientNotes.length === 0) {
+                addNewPatient(true); // Add a new patient if none were loaded, true to indicate it's the first
+            } else {
+                const validCurrentPatient = patientNotes.find(p => p.id === currentPatientId);
+                if (!validCurrentPatient && patientNotes.length > 0) {
+                    currentPatientId = patientNotes[0].id; // Default to first if stored ID is invalid
+                }
+                switchToPatient(currentPatientId);
+            }
+            updatePatientSelector();
+            document.getElementById('transcriptArea').addEventListener('input', saveContent); // Auto-save on typing
+        };
+
+        // --- LocalStorage Functions ---
+        function saveDataToLocalStorage() {
+            try {
+                localStorage.setItem(LOCAL_STORAGE_PATIENTS_KEY, JSON.stringify(patientNotes));
+                if (currentPatientId !== null) {
+                    localStorage.setItem(LOCAL_STORAGE_CURRENT_PATIENT_ID_KEY, currentPatientId.toString());
+                }
+                localStorage.setItem(LOCAL_STORAGE_PATIENT_COUNTER_KEY, patientCounter.toString());
+            } catch (e) {
+                console.error("Error saving to localStorage:", e);
+                showError("Could not save data. Storage might be full.");
+            }
+        }
+
+        function loadDataFromLocalStorage() {
+            try {
+                const storedPatients = localStorage.getItem(LOCAL_STORAGE_PATIENTS_KEY);
+                if (storedPatients) {
+                    patientNotes = JSON.parse(storedPatients);
+                }
+
+                const storedCurrentId = localStorage.getItem(LOCAL_STORAGE_CURRENT_PATIENT_ID_KEY);
+                if (storedCurrentId !== null) {
+                    currentPatientId = parseInt(storedCurrentId);
+                }
+
+                const storedPatientCounter = localStorage.getItem(LOCAL_STORAGE_PATIENT_COUNTER_KEY);
+                if (storedPatientCounter !== null) {
+                    patientCounter = parseInt(storedPatientCounter);
+                }
+            } catch (e) {
+                console.error("Error loading from localStorage:", e);
+                patientNotes = []; // Reset if data is corrupt
+                currentPatientId = null;
+                patientCounter = 1;
+                showError("Could not load previous data. Starting fresh.");
+            }
+        }
+
+        // --- Patient Management Functions ---
+        function addNewPatient(isInitial = false) {
+            const defaultName = `Patient ${patientCounter}`;
+            const patientName = isInitial ? defaultName : (prompt("Enter Patient Name/ID (optional)", defaultName) || defaultName);
+
+            const newPatient = {
+                id: Date.now(),
+                name: patientName,
+                transcript: '',
+                templateKey: '',
+                homeVisitMode: false 
+            };
+            patientNotes.push(newPatient);
+            patientCounter++;
+            currentPatientId = newPatient.id;
+
+            updatePatientSelector(); // This will also select the new patient in the dropdown
+            switchToPatient(newPatient.id); // Load the new patient's (empty) state
+            saveDataToLocalStorage();
+        }
+
+        function updatePatientSelector() {
+            const selector = document.getElementById('patientSelector');
+            selector.innerHTML = ''; // Clear existing options
+            patientNotes.forEach(patient => {
+                const option = document.createElement('option');
+                option.value = patient.id;
+                option.textContent = patient.name;
+                selector.appendChild(option);
+            });
+            if (currentPatientId !== null) {
+                selector.value = currentPatientId;
+            }
+        }
+
+        function switchPatientEvent() { // Called by onchange from patientSelector
+            const selectedId = document.getElementById('patientSelector').value;
+            if (selectedId) {
+                switchToPatient(parseInt(selectedId));
+            }
+        }
+
+        function switchToPatient(patientIdToSwitch) {
+            const patient = patientNotes.find(p => p.id === patientIdToSwitch);
+            if (patient) {
+                currentPatientId = patient.id;
+                document.getElementById('transcriptArea').value = patient.transcript;
+                document.getElementById('templateSelect').value = patient.templateKey || "";
+                
+                const templateDef = templates[patient.templateKey];
+                // Update homeVisitMode based on the actual template handler
+                patient.homeVisitMode = (templateDef && templateDef.handler === processHomeVisitDictation);
+                homeVisitMode = patient.homeVisitMode; // Update global state
+                currentSection = ''; // Reset section for smart dictation
+
+                 if (patient.homeVisitMode) {
+                    updateStatus('ready', `Home Visit mode for ${patient.name}. Say section keywords.`);
+                } else if (patient.templateKey && templateDef) {
+                    updateStatus('ready', `Template "${patient.templateKey}" loaded for ${patient.name}. Ready to record.`);
+                }
+                else {
+                    updateStatus('ready', `Switched to ${patient.name}. Ready to record.`);
+                }
+
+                updatePatientSelector(); // Ensure dropdown highlights the current patient
+                saveDataToLocalStorage(); // Save the new currentPatientId
+            } else if (patientNotes.length > 0) {
+                // Fallback if ID is invalid, switch to first patient
+                switchToPatient(patientNotes[0].id);
+            } else {
+                 // No patients exist, perhaps after all were deleted (if deletion is implemented)
+                 document.getElementById('transcriptArea').value = '';
+                 document.getElementById('templateSelect').value = '';
+                 updateStatus('error', 'No patients available. Please add a new patient.');
+            }
+        }
+
+        function getCurrentPatient() {
+            if (currentPatientId === null) return null;
+            return patientNotes.find(p => p.id === currentPatientId);
+        }
+
+        // --- Speech Recognition Functions ---
+        function initializeSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+
+                recognition.onstart = function() {
+                    updateStatus('recording', 'Recording...');
+                };
+
+                recognition.onresult = function(event) {
+                    let finalTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript + ' ';
+                        }
+                    }
+
+                    const textArea = document.getElementById('transcriptArea');
+                    const patient = getCurrentPatient();
+                    if (finalTranscript && patient) {
+                        const templateDefinition = templates[patient.templateKey];
+                        if (patient.templateKey && templateDefinition && typeof templateDefinition.handler === 'function') {
+                            // Call the specific handler defined for the template
+                            textArea.value = templateDefinition.handler(finalTranscript, textArea.value, patient.templateKey);
+                        } else {
+                            // Default behavior: append to existing text
+                            textArea.value += finalTranscript; 
+                        }
+                        saveContent();
+                    }
+                };
+
+                recognition.onerror = function(event) {
+                    showError('Speech recognition error: ' + event.error);
+                    if (isRecording) stopRecording(); // Ensure UI updates
+                };
+
+                recognition.onend = function() {
+                    if (isRecording) { // If it ended unexpectedly while still supposed to be recording
+                        try {
+                            recognition.start(); // Try to restart
+                        } catch(e) {
+                            // Handle error if start fails (e.g. no-speech)
+                            stopRecording(); // Update UI to stopped state
+                            showError("Recording stopped: " + e.message);
+                        }
+                    } else {
+                        updateStatus('ready', 'Ready to record');
+                    }
+                };
+                updateStatus('ready', 'Ready to record');
+            } else {
+                showError('Speech recognition not supported in this browser.');
+                updateStatus('error', 'Speech recognition unavailable.');
+                document.getElementById('recordBtn').disabled = true;
+            }
+        }
+        
+        function insertIntoSection(currentText, sectionHeader, newDictation, templateKey) {
+            const lines = currentText.split('\n');
+            let foundSection = false;
+            let newLines = [];
+        
+            // Regex for all section keywords across all templates, to avoid appending them
+            const allSectionKeywords = Object.values(templates).flatMap(t => Object.keys(t.sections));
+            const keywordRegex = new RegExp(`\\b(${allSectionKeywords.join('|')})\\b`, 'gi');
+            
+            const cleanNewDictation = newDictation.replace(keywordRegex, "").trim();
+            const textToInsert = (cleanNewDictation ? (cleanNewDictation.endsWith('.') || cleanNewDictation.endsWith('!') || cleanNewDictation.endsWith('?') ? cleanNewDictation : cleanNewDictation + '.') : ''); // Add a period if missing
+
+            const templateSections = templates[templateKey]?.sections || {}; // Get sections for the current template
+
+            for (let i = 0; i < lines.length; i++) {
+                newLines.push(lines[i]); // Always push the current line
+                if (lines[i].includes(sectionHeader) && !foundSection) {
+                    foundSection = true;
+                    // If the line *is* just the header, or header with a colon, insert on the next line
+                    if (lines[i].trim() === sectionHeader.trim() || lines[i].trim() === sectionHeader.trim() + ':') {
+                        let insertionPoint = i + 1;
+                        // Find where to insert: look for the next specific section header or end of current content for this section
+                        while(insertionPoint < lines.length) {
+                            const nextLine = lines[insertionPoint].trim();
+                            // If the next line is another section header relevant to this template, break
+                            if (Object.values(templateSections).some(s => nextLine.includes(s) && s !== sectionHeader) || nextLine.startsWith('- ')) { // Also consider list items as new content, don't jump over them
+                                break; 
+                            }
+                            insertionPoint++;
+                        }
+                        // Insert at the calculated point if textToInsert exists and is not just whitespace
+                        if (textToInsert.trim()) {
+                            newLines.splice(insertionPoint, 0, textToInsert);
+                        }
+                        // This indicates we've "handled" the insertion for this section
+                        // If we are done, we can return early. Otherwise, continue to rebuild the rest of the text.
+                        return newLines.join('\n') + lines.slice(insertionPoint).join('\n'); // Append remaining lines
+                    } else {
+                        // Append to the line if it already has content, without adding a new line
+                        if (!lines[i].endsWith(' ') && textToInsert) {
+                            newLines[i] += ' ';
+                        }
+                        newLines[i] += textToInsert;
+                        return newLines.join('\n') + lines.slice(i + 1).join('\n'); // Append remaining lines
+                    }
+                }
+            }
+            // If section header not found (shouldn't happen with correct templates), just append
+            return currentText + (currentText.endsWith(' ') || currentText.endsWith('\n') ? "" : " ") + newDictation;
+        }
+
+
+        function processHomeVisitDictation(newDictation, currentTextValue, templateKey) {
+            const lowerText = newDictation.toLowerCase().trim();
+            const templateDef = templates[templateKey];
+
+            let sectionKeywordMatched = false;
+            for (const key in templateDef.sections) {
+                if (lowerText.includes(key)) {
+                    currentSection = key; // Update the current section for subsequent dictation
+                    sectionKeywordMatched = true;
+                    break;
+                }
+            }
+
+            let resultText = currentTextValue;
+
+            if (sectionKeywordMatched) {
+                // If a section keyword was matched, try to insert the dictation into that section.
+                // The insertIntoSection function will handle removing the keyword from dictation
+                resultText = insertIntoSection(currentTextValue, templateDef.sections[currentSection], newDictation, templateKey);
+            } else if (currentSection) {
+                // If no new section keyword was spoken, but we're in a section, append to that section.
+                resultText = insertIntoSection(currentTextValue, templateDef.sections[currentSection], newDictation, templateKey);
+            } else {
+                // If no section has been identified yet, just append to the end.
+                resultText += (currentTextValue.endsWith(' ') || currentTextValue.endsWith('\n') ? "" : " ") + newDictation;
+            }
+
+            return resultText;
+        }
+
+        function processGenericStructuredDictation(newDictation, currentTextValue, templateKey) {
+            const lowerText = newDictation.toLowerCase().trim();
+            const templateDef = templates[templateKey];
+
+            let sectionKeywordMatched = false;
+            for (const key in templateDef.sections) {
+                if (lowerText.includes(key)) {
+                    currentSection = key;
+                    sectionKeywordMatched = true;
+                    break;
+                }
+            }
+
+            let resultText = currentTextValue;
+
+            if (sectionKeywordMatched) {
+                resultText = insertIntoSection(currentTextValue, templateDef.sections[currentSection], newDictation, templateKey);
+            } else if (currentSection) {
+                resultText = insertIntoSection(currentTextValue, templateDef.sections[currentSection], newDictation, templateKey);
+            } else {
+                resultText += (currentTextValue.endsWith(' ') || currentTextValue.endsWith('\n') ? "" : " ") + newDictation;
+            }
+
+            return resultText;
+        }
+
+
+        function toggleRecording() {
+            if (!recognition) {
+                showError('Speech recognition not available.');
+                return;
+            }
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        function startRecording() {
+            if (!recognition) return;
+            try {
+                const patient = getCurrentPatient();
+                if (!patient) {
+                    showError("Please select or add a patient first.");
+                    addNewPatient(true);
+                    return;
+                }
+                recognition.start();
+                isRecording = true;
+                document.getElementById('recordBtn').innerHTML = '⏹️ Stop';
+                document.getElementById('recordBtn').className = 'btn btn-stop';
+            } catch (error) {
+                if (error.name === 'InvalidStateError') {
+                    console.warn("Recognition was already started.");
+                    isRecording = true;
+                    document.getElementById('recordBtn').innerHTML = '⏹️ Stop';
+                    document.getElementById('recordBtn').className = 'btn btn-stop';
+                    updateStatus('recording', 'Recording...');
+                } else {
+                    showError('Could not start recording: ' + error.message);
+                    isRecording = false;
+                }
+            }
+        }
+
+        function stopRecording() {
+            if (recognition && isRecording) {
+                recognition.stop();
+            }
+            isRecording = false;
+            document.getElementById('recordBtn').innerHTML = '🎤 Record';
+            document.getElementById('recordBtn').className = 'btn btn-record';
+            updateStatus('ready', 'Ready to record');
+        }
+
+        // --- Template Functions ---
+        function loadTemplate() {
+            const select = document.getElementById('templateSelect');
+            const templateKey = select.value;
+            const patient = getCurrentPatient();
+
+            if (!patient) {
+                showError("Please add or select a patient before loading a template.");
+                select.value = "";
+                addNewPatient(true);
+                return;
+            }
+
+            patient.templateKey = templateKey;
+            const templateDefinition = templates[templateKey];
+
+            // Reset current issue data and section when loading a new template
+            currentSection = '';
+
+            if (templateDefinition) {
+                document.getElementById('transcriptArea').value = templateDefinition.content;
+                patient.homeVisitMode = (templateDefinition.handler === processHomeVisitDictation); 
+                homeVisitMode = patient.homeVisitMode; 
+
+                if (patient.homeVisitMode) {
+                    updateStatus('ready', `Home Visit mode for ${patient.name}. Say section keywords.`);
+                } else {
+                    updateStatus('ready', `Template loaded for ${patient.name}. Ready to record.`);
+                }
+            } else { 
+                document.getElementById('transcriptArea').value = patient.transcript || '';
+                patient.homeVisitMode = false; 
+                homeVisitMode = false;
+                updateStatus('ready', `Switched to ${patient.name}. Ready to record.`);
+            }
+            saveContent(); 
+        }
+
+        // --- Utility Functions ---
+        function clearTranscript() {
+            const patient = getCurrentPatient();
+            if (patient) {
+                if (confirm(`Clear all content for ${patient.name}? This cannot be undone.`)) {
+                    document.getElementById('transcriptArea').value = '';
+                    patient.transcript = '';
+                    patient.templateKey = ''; 
+                    patient.homeVisitMode = false;
+                    currentSection = '';
+                    document.getElementById('templateSelect').value = ''; 
+                    saveDataToLocalStorage();
+                    updateStatus('ready', 'Transcript cleared.');
+                }
+            } else {
+                showError("No patient selected to clear.");
+            }
+        }
+
+        function copyToClipboard() {
+            const text = document.getElementById('transcriptArea').value;
+            if (!text) {
+                showError('Nothing to copy.');
+                return;
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                showSuccess('Copied to clipboard!');
+            }).catch(err => {
+                showError('Could not copy to clipboard: ' + err);
+            });
+        }
+
+        function saveNote() {
+            const patient = getCurrentPatient();
+            if (!patient || !patient.transcript) {
+                showError("No content to save for the current patient.");
+                return;
+            }
+            const blob = new Blob([patient.transcript], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const safePatientName = patient.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            a.download = `note_${safePatientName}_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showSuccess('Note saved as .txt!');
+        }
+
+        function exportToPDF() {
+            const patient = getCurrentPatient();
+            if (!patient || !patient.transcript) {
+                showError("No content to export for the current patient.");
+                return;
+            }
+            const content = patient.transcript;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head><title>Patient Note - ${patient.name}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; }
+                    .header { border-bottom: 2px solid #333; margin-bottom: 20px; padding-bottom: 10px; }
+                    h1 { font-size: 1.5em; }
+                    pre { white-space: pre-wrap; font-family: inherit; font-size: 1em; }
+                </style>
+                </head>
+                <body>
+                <div class="header"><h1>Patient Note: ${patient.name}</h1><p>Generated: ${new Date().toLocaleString()}</p></div>
+                <pre>${content}</pre>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.focus(); 
+            setTimeout(() => { printWindow.print(); }, 500);
+        }
+
+        // --- Referral Generation ---
+        function generateReferral() {
+            const patient = getCurrentPatient();
+            const transcriptArea = document.getElementById('transcriptArea');
+
+            if (!patient || !patient.transcript) {
+                showError("No patient notes available to generate a referral.");
+                return;
+            }
+
+            const specialization = prompt("Enter the specialty or service for referral (e.g., Cardiology, Physiotherapy, Dermatology, ENT, Gastroenterology, Urology, Neurology, Orthopaedics, Opthalmology, Psychiatry, General Surgery, Pediatric, OB/GYN, Oncology, Nephrology):");
+
+            if (!specialization) {
+                showError("Referral generation cancelled. Specialty/service is required.");
+                return;
+            }
+
+            const priority = prompt("Enter priority for referral (e.g., Urgent, 2WW, As soon as possible, Routine):", "Routine");
+
+            const patientName = patient.name || "Patient";
+            const currentNoteContent = patient.transcript;
+            const currentDate = new Date().toLocaleDateString();
+
+            let reasonForReferral = "";
+            let currentFindings = "";
+
+            // --- Simplified extraction for Reason for Referral and Current Findings ---
+            const lines = currentNoteContent.split('\n');
+            const MAX_SUMMARY_LENGTH = 300; 
+            
+            // Keywords for extracting reason for referral
+            const reasonKeywords = [
+                'chief complaint:', 'acute issues:', 'admitting diagnosis:', 'diagnosis:',
+                'history of present illness:', 'history:'
+            ];
+
+            // Keywords for extracting findings
+            const findingsKeywords = [
+                'physical examination:', 'observations:', 'vital signs:', 'impression:'
+            ];
+
+            let foundReasonLine = false;
+            let foundFindingsLine = false;
+
+            for (const line of lines) {
+                const lowerLine = line.toLowerCase();
+                const trimmedLine = line.trim();
+
+                // Check for reason keywords (and only grab the content immediately after the header)
+                if (!foundReasonLine) {
+                    for (const keyword of reasonKeywords) {
+                        if (lowerLine.includes(keyword)) {
+                            reasonForReferral = trimmedLine.replace(new RegExp(`^${keyword}\\s*`, 'i'), '').trim();
+                            if (reasonForReferral) {
+                                foundReasonLine = true; // Mark as found to prevent adding more
+                            }
+                            break; 
+                        }
+                    }
+                }
+                
+                // Check for findings keywords (and only grab the content immediately after the header)
+                if (!foundFindingsLine) {
+                    for (const keyword of findingsKeywords) {
+                        if (lowerLine.includes(keyword)) {
+                            currentFindings = trimmedLine.replace(new RegExp(`^${keyword}\\s*`, 'i'), '').trim();
+                            if (currentFindings) {
+                                foundFindingsLine = true; // Mark as found to prevent adding more
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Fallback for reason if still empty or too short
+            if (!reasonForReferral) {
+                const firstMeaningfulParagraph = currentNoteContent.split('\n\n').find(p => p.trim() !== '') || currentNoteContent.split('\n')[0];
+                reasonForReferral = firstMeaningfulParagraph.trim().substring(0, MAX_SUMMARY_LENGTH) + (firstMeaningfulParagraph.length > MAX_SUMMARY_LENGTH ? '...' : '');
+                if (!reasonForReferral) reasonForReferral = "for further assessment and management regarding their current symptoms.";
+            }
+
+            // Fallback for findings if still empty
+            if (!currentFindings) {
+                currentFindings = "Relevant clinical findings are detailed in the full consultation note.";
+            }
+
+            let referralText = `\n\n--- Referral to Further Care ---\n\n`;
+            referralText += `Date: ${currentDate}\n\n`;
+            referralText += `Referral to: The Department of ${specialization}\n`;
+            referralText += `Dear ${specialization} Team,\n\n`;
+            referralText += `Priority: ${priority}\n\n`;
+            referralText += `Reason for referral: ${reasonForReferral}\n\n`;
+            referralText += `Current Findings:\n${currentFindings}\n\n`; 
+            referralText += `I would appreciate your assessment and further management plan for this patient.\n\n`;
+            referralText += `Kind Regards,\n[Your Name/Department]\n\n`;
+
+
+            // Append the generated referral to the current transcript area
+            transcriptArea.value += referralText;
+            saveContent(); 
+            showSuccess("Referral draft appended to notes. Please review and edit thoroughly.");
+
+            // Optionally scroll to the bottom of the transcript area to show the new referral
+            transcriptArea.scrollTop = transcriptArea.scrollHeight;
+        }
+
+
+        // --- Status and Error Handling ---
+        function updateStatus(type, message) {
+            const indicator = document.getElementById('statusIndicator');
+            const text = document.getElementById('statusText');
+            indicator.className = `status-indicator ${type}`; 
+            text.textContent = message;
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            updateStatus('error', message.substring(0, 50) + "..."); 
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+                if(!isRecording) updateStatus('ready', 'Ready to record');
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const originalStatusText = document.getElementById('statusText').textContent;
+            const originalStatusType = document.getElementById('statusIndicator').className.replace('status-indicator ', '');
+            
+            updateStatus('ready', message); 
+            setTimeout(() => {
+                 if(!document.getElementById('errorMessage').style.display !== 'none'){
+                    updateStatus(originalStatusType, originalStatusText);
+                 } else if (!isRecording) {
+                    updateStatus('ready', 'Ready to record');
+                 }
+            }, 2000);
+        }
+
+        // --- In-memory Save (called on textarea input and after dictation) ---
+        function saveContent() {
+            const patient = getCurrentPatient();
+            if (patient) {
+                patient.transcript = document.getElementById('transcriptArea').value;
+                saveDataToLocalStorage();
+            }
+        }
+
+        // --- Window Controls ---
+        function minimizeApp() {
+            showSuccess("Window minimize not directly supported by web pages. Use browser controls.");
+        }
+
+        function toggleMaximize() {
+             showSuccess('App is designed to fill the window. Use browser controls to resize.');
+        }
+
+        function closeApp() {
+            if (confirm('Close Medical Dictation App? Unsaved changes in the current note might be lost if not typed out.')) {
+                window.close(); 
+                if (!window.closed) {
+                     showSuccess('Please close the browser tab manually.');
+                }
+            }
+        }
+
+        // --- Always On Top & Focus (Limited by browser security) ---
+        function setupAlwaysOnTop() {
+            window.addEventListener('blur', function() {
+            });
+        }
+
+        // --- Keyboard Shortcuts ---
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) { 
+                switch(e.key.toLowerCase()) {
+                    case 'r':
+                        e.preventDefault();
+                        toggleRecording();
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        saveNote(); 
+                        break;
+                    case 'e': 
+                        e.preventDefault();
+                        exportToPDF();
+                        break;
+                }
+            }
+        });
+
+    </script>
+</body>
+</html>
+```
